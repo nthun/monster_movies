@@ -1,14 +1,20 @@
 ---
 title: "Monster movies"
-format: html
-editor: visual
+format:
+  html:
+    theme: darkly
 editor_options: 
   chunk_output_type: console
 ---
 
 # The Monster movies dataset
 
+In this analysis, we will explore the Monster movies dataset from TidyTuesday. The dataset contains information about monster movies, including their titles, years of release, genres, IMDB ratings, and number of votes.
+
 ```{r setup}
+# | message: false
+# | warning: false
+
 library(tidyverse)
 library(widyr)
 library(ggdark)
@@ -22,8 +28,10 @@ mm_raw <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesda
 
 mm <- 
     mm_raw |> 
+    # Create a decade variable
     mutate(decade = floor(year/10) * 10)
 
+# Take a look at the data
 mm |> glimpse()
 
 ```
@@ -33,14 +41,7 @@ mm |> glimpse()
 Monster movies have been produced for many decades. Let's see how many monster movies were produced each year.
 
 ```{r}
-
-mm |> 
-    count(year) |> 
-    print(n = 100)
-
-mm |> 
-    count(decade)
-
+# Two different ways to show the number of movies by decade
 mm |> 
     ggplot() +
     aes(x = decade) +
@@ -60,11 +61,12 @@ mm |>
 In this part, we will analyze the genres of monster movies. Each movie can have multiple genres separated by commas.
 
 ```{r}
-
+# Separate the genres into multiple rows
 mm_genre <-
     mm |> 
     separate_rows(genres, sep = ",")
 
+# Count the number of movies by genre
 mm_genre |> 
     count(genres, sort = TRUE)
 
@@ -75,6 +77,7 @@ mm_genre |>
 In this part, we will analyze the co-occurence of genres in monster movies.
 
 ```{r}
+# Create a co-occurence matrix of genres
 mm_genre |> 
     pairwise_count(item = genres, feature = tconst, sort = TRUE, upper = FALSE) |> 
     ggplot() +
@@ -93,18 +96,21 @@ mm_genre |>
 Some genres may have higher average ratings than others. Let's analyze the average rating of monster movies by genre.
 
 ```{r}
-
+# Calculate average rating by genre
 genre_ratings <-
     mm_genre |> 
     group_by(genres) |> 
     summarise(avg_rating = mean(average_rating),
               n_rating = n(),
               sd_rating = sd(average_rating),
-              se_rating = sd_rating/sqrt(n_rating)
+              se_rating = sd_rating/sqrt(n_rating),
+              .groups = "drop"
               ) |> 
+    # Filter genres with at least 10 ratings
     filter(n_rating >= 10) |> 
     arrange(-avg_rating)
 
+# Plot average rating by genre
 genre_ratings |> 
     mutate(genres = fct_reorder(genres, avg_rating)) |> 
     ggplot() +
@@ -121,9 +127,11 @@ genre_ratings |>
 
 # Correlate the number of votes and rating
 
-Can we see any correlation between the number of votes and the average rating of monster movies?
+Can we see any correlation between the number of votes and the average rating of monster movies? We are looking for a linear trend and a smoothed trend.
 
 ```{r}
+#| message: false
+#| warning: false
 
 mm |> 
     arrange(-num_votes)
